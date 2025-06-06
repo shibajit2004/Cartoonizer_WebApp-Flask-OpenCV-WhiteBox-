@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cartoonizer AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+    <style>
+        body {
+            background: url('/static/images/bg-cartoon.jpg') no-repeat center center fixed;
+            background-size: cover;
+            font-family: 'Segoe UI', sans-serif;
+            color: #333;
+            padding-top: 56px; /* to avoid content under fixed navbar */
+            padding-bottom: 80px; /* for bottom about bar */
+        }
+        .glass-card {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .btn-upload {
+            margin: 1rem 0;
+        }
+        .section-title {
+            color: #0d6efd;
+            font-weight: bold;
+        }
+        .download-btn {
+            margin-top: 1rem;
+        }
+        .img-compare {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .img-compare img {
+            max-width: 100%;
+            border-radius: 12px;
+            border: 2px solid #ddd;
+            max-height: 180px;
+            object-fit: cover;
+        }
+        footer {
+            text-align: center;
+            padding: 1rem;
+            color: #fff;
+        }
+        /* Progress bar style */
+        #progress-container {
+            display: none;
+            margin-top: 1rem;
+        }
+
+        /* Fixed top navbar */
+        nav.navbar {
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            backdrop-filter: blur(5px);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            left: 0;
+            z-index: 1030;
+        }
+
+        /* Fixed bottom about bar */
+        #about-bar {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background: rgba(13, 110, 253, 0.9);
+            color: white;
+            text-align: center;
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+            box-shadow: 0 -2px 6px rgba(0,0,0,0.15);
+            backdrop-filter: blur(5px);
+            z-index: 1030;
+        }
+
+        /* Responsive for video and images side by side */
+        .result-media {
+            max-height: 400px;
+            object-fit: contain;
+            border-radius: 12px;
+            border: 2px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Navigation Bar -->
+    <nav class="navbar navbar-light">
+        <div class="container">
+            <a class="navbar-brand fw-bold text-primary" href="#">
+                <i class="fas fa-magic"></i> Cartoonizer AI
+            </a>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <div class="text-center mb-5">
+            <h1 class="display-5 section-title">Upload your image or video and watch it magically cartoonized!</h1>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="alert alert-warning text-center">
+                    {% for category, message in messages %}
+                        <div>{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <div class="glass-card">
+            <form id="formsubmit" method="post" action="cartoonize" enctype="multipart/form-data">
+                <div class="text-center">
+                    <input type="file" id="hiddeninputfile" name="image" accept="image/*" hidden />
+                    <input type="file" id="hiddeninputvideo" name="video" accept="video/*" hidden />
+                    <button type="button" class="btn btn-primary btn-upload" id="uploadimage">
+                        <i class="fas fa-image"></i> Upload Image
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-upload" id="uploadvideo">
+                        <i class="fas fa-video"></i> Upload Video (Max 30MB)
+                    </button>
+                </div>
+
+                <!-- Progress bar container -->
+                <div id="progress-container" class="progress">
+                    <div
+                        id="progress-bar"
+                        class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                        role="progressbar"
+                        aria-valuenow="0"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                        style="width: 0%"
+                    >
+                        Processing...
+                    </div>
+                </div>
+            </form>
+
+            {% if cartoonized_image or cartoonized_video %}
+    <hr />
+    <div class="text-center mt-4">
+        <h5>Cartoonized Output</h5>
+        {% if cartoonized_image %}
+            <img src="{{ cartoonized_image }}" alt="Cartoonized Image" class="img-fluid result-media" />
+        {% elif cartoonized_video %}
+            <video width="100%" controls class="result-media">
+                <source src="{{ cartoonized_video }}" type="video/mp4" />
+            </video>
+        {% endif %}
+        <div class="download-btn mt-3">
+            {% if cartoonized_image %}
+                <a href="{{ cartoonized_image }}" class="btn btn-success" download>
+                    <i class="fas fa-download"></i> Download Image
+                </a>
+            {% elif cartoonized_video %}
+                <a href="{{ cartoonized_video }}" class="btn btn-success" download>
+                    <i class="fas fa-download"></i> Download Video
+                </a>
+            {% endif %}
+            <div class="text-muted mt-1">(Available for 5 minutes)</div>
+        </div>
+    </div>
+{% endif %}
+        </div>
+
+        <!-- Sample Images Section -->
+        <div class="mt-5">
+            <h3 class="section-title text-center mb-4">Sample Images</h3>
+
+            <!-- Repeat this block for each sample pair -->
+            <div class="img-compare mx-auto" style="max-width: 700px;">
+                <div class="text-center">
+                    <img src="{{ url_for('static', filename='sample_images/cake.jpeg') }}" alt="Sample Normal" />
+                    <p class="mt-2 fw-semibold">Normal</p>
+                </div>
+                <div class="text-center">
+                    <img src="{{ url_for('static', filename='sample_images/cake_cartoonized.jpeg') }}" alt="Sample Cartoon" />
+                    <p class="mt-2 fw-semibold">Cartoon</p>
+                </div>
+            </div>
+
+            <div class="img-compare mx-auto" style="max-width: 700px;">
+                <div class="text-center">
+                    <img src="{{ url_for('static', filename='sample_images/spice.jpeg') }}" alt="Sample Normal" />
+                    <p class="mt-2 fw-semibold">Normal</p>
+                </div>
+                <div class="text-center">
+                    <img src="{{ url_for('static', filename='sample_images/spice_cartoonized.jpeg') }}" alt="Sample Cartoon" />
+                    <p class="mt-2 fw-semibold">Cartoon</p>
+                </div>
+            </div>
+
+            <div class="img-compare mx-auto" style="max-width: 700px;">
+                <div class="text-center">
+                    <img src="{{ url_for('static', filename='sample_images/emma.jpg') }}" alt="Sample Normal" />
+                    <p class="mt-2 fw-semibold">Normal</p>
+                </div>
+                <div class="text-center">
+                    <img src="{{ url_for('static', filename='sample_images/emma_cartoonized.jpg') }}" alt="Sample Cartoon" />
+                    <p class="mt-2 fw-semibold">Cartoon</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom About Bar -->
+    <div id="about-bar">
+        <div class="container">
+            Cartoonizer AI is an exciting project that transforms your images and videos into fun cartoon versions instantly. Built with ❤️ using AI and computer vision techniques.
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById("uploadimage").onclick = function () {
+            document.getElementById("hiddeninputfile").click();
+        };
+        document.getElementById("uploadvideo").onclick = function () {
+            document.getElementById("hiddeninputvideo").click();
+        };
+
+        document.getElementById("hiddeninputfile").onchange = function () {
+            startProgressBar();
+            document.getElementById("formsubmit").submit();
+        };
+
+        document.getElementById("hiddeninputvideo").onchange = function () {
+            const file = this.files[0];
+            if (file.size / 1024 > 30720) {
+                alert("Video too large. Please upload under 30MB.");
+            } else {
+                startProgressBar();
+                document.getElementById("formsubmit").submit();
+            }
+        };
+
+        function startProgressBar() {
+            const progressContainer = document.getElementById("progress-container");
+            const progressBar = document.getElementById("progress-bar");
+            progressContainer.style.display = "block";
+            progressBar.style.width = "0%";
+            progressBar.setAttribute("aria-valuenow", "0");
+
+            // Simple animation: increase to 90% over 10 seconds while processing (fake progress)
+            let width = 0;
+            const interval = setInterval(() => {
+                if (width >= 90) {
+                    clearInterval(interval);
+                } else {
+                    width += 1;
+                    progressBar.style.width = width + "%";
+                    progressBar.setAttribute("aria-valuenow", width);
+                }
+            }, 100);
+        }
+    </script>
+</body>
+</html>
